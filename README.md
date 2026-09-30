@@ -112,24 +112,29 @@ Per-patient memory stored as JSON in `./data/patient_memory/`. Tracks:
 - Uploaded documents
 - Full Q&A history
 
-## Benchmarks
+## Benchmarks & Evaluation
 
-See [evaluation/benchmarks_report.md](evaluation/benchmarks_report.md) for a detailed analysis of all benchmarks used to evaluate OpenEvidence and similar systems.
+> **Important**: Read [`evaluation/benchmarks_report.md`](evaluation/benchmarks_report.md) for a full analysis of the medical AI benchmark landscape, including what OpenEvidence reports, what published baselines exist, and which benchmarks are appropriate for evaluating this agent.
+>
+> For full evaluation results (mini-set qualitative review, MedQA, PubMedQA, multi-model comparison), see [`evaluation/results/evaluation_report.md`](evaluation/results/evaluation_report.md).
 
 **Key benchmarks implemented:**
 1. **MedQA (USMLE)** — 4-option MCQ from USMLE Step 1-3
 2. **PubMedQA** — Yes/no/maybe questions from PubMed abstracts
 3. **MMLU Medical** — Broad medical knowledge MCQ
-4. **Internal Mini-Set** — 10 curated clinical questions
+4. **Internal Mini-Set** — 10 curated clinical questions with qualitative review
 
-## Published Baselines
+## Results Summary
 
-| Model          | MedQA  | MMLU Med | PubMedQA |
-|----------------|--------|----------|----------|
-| GPT-4          | 87.0%  | 91.1%    | 75.2%    |
-| Med-PaLM 2     | 86.5%  | 88.3%    | 79.7%    |
-| Gemini 1.5 Pro | 91.1%  | —        | —        |
-| GPT-3.5        | 57.0%  | 75.1%    | 74.4%    |
+| Model | MedQA (direct) | MedQA (RAG) |
+|-------|---------------|-------------|
+| gpt-oss-20b (this work) | 70.0% | **80.0%** |
+| qwen/qwen3.8-27b (this work) | 75.0% | **80.0%** |
+| GPT-4 (Nori et al. 2023) | 87.0% | — |
+| GPT-3.5 (Nori et al. 2023) | 57.0% | — |
+| USMLE passing threshold | ~60% | — |
+
+RAG (PubMed retrieval) adds **+5–10 pp** over direct model knowledge. Both models exceed the USMLE passing threshold with zero medical fine-tuning.
 
 ## Disclaimer
 
