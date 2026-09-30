@@ -1,0 +1,10 @@
+
+PubMedQA Benchmark Evaluation — groq/openai/gpt-oss-20b
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loaded 1000 questions. Using first 20.
+Evaluating PubMedQA... ---------------------------------------- 100% 0:03:51
+
+PubMedQA Accuracy: 45.0% (9/20)
+
+Results saved to: 
+evaluation/results/PubMedQA_groq_openai-gpt-oss-20b_20260920_114455.json

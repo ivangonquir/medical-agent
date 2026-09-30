@@ -1,0 +1,28 @@
+# Environment / secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Patient data and uploaded files
+data/
+pdfs/
+
+# Evaluation result JSONs (keep the markdown report, skip raw data)
+evaluation/results/*.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
