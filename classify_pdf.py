@@ -52,7 +52,7 @@ def render_page(pdf_path: Path, page_number: int) -> bytes:
         return image.tobytes("png")
 
 
-def classify_page(image_bytes: bytes) -> str:
+def classify_page(image_bytes: bytes) -> tuple[str, dict[str, float]]:
     encoded_image = base64.b64encode(image_bytes).decode("ascii")
 
     response = requests.post(
@@ -86,7 +86,15 @@ def classify_page(image_bytes: bytes) -> str:
     )
     response.raise_for_status()
 
-    raw_answer = response.json()["message"]["content"]
+    data = response.json()
+    raw_answer = data["message"]["content"]
+
+    # Ollama reports durations in nanoseconds.
+    timings = {
+        "load_seconds": round(data.get("load_duration", 0) / 1e9, 2),
+        "input_seconds": round(data.get("prompt_eval_duration", 0) / 1e9, 2),
+        "generation_seconds": round(data.get("eval_duration", 0) / 1e9, 2),
+    }
 
     try:
         result = json.loads(raw_answer)
@@ -101,7 +109,7 @@ def classify_page(image_bytes: bytes) -> str:
     if not isinstance(label, str) or label not in LABELS:
         raise ValueError(f"Unexpected model label: {raw_answer!r}")
 
-    return label
+    return label, timings
 
 def summarize_labels(labels: list[str]) -> str:
     medical_categories = {"blood_test", "retina", "endoscopy"}
@@ -162,7 +170,14 @@ def main():
         page_started = time.perf_counter()
 
         image_bytes = render_page(args.pdf, page_number)
-        label = classify_page(image_bytes)
+        label, timings = classify_page(image_bytes)
+
+        print(
+            f"  Load: {timings['load_seconds']}s | "
+            f"Input: {timings['input_seconds']}s | "
+            f"Generation: {timings['generation_seconds']}s",
+            flush=True,
+        )
 
         results.append(label)
         elapsed = time.perf_counter() - page_started
@@ -174,6 +189,7 @@ def main():
             "page": page_number,
             "predicted_label": label,
             "seconds": round(elapsed, 2),
+            **timings,
             "expected_label": "",
         })
 
@@ -199,6 +215,9 @@ def main():
         "page",
         "predicted_label",
         "seconds",
+        "load_seconds",
+        "input_seconds",
+        "generation_seconds",
         "expected_label",
     ]
 
