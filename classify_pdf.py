@@ -190,7 +190,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     output_path = output_dir / (
-        f"{args.pdf.stem}_{time.time_ns()}.csv"
+        f"{args.pdf.stem}_{time.strftime('%Y-%m-%d_%H-%M-%S')}.csv"
     )
 
     fieldnames = [
