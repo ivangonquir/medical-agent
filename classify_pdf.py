@@ -5,6 +5,7 @@ from pathlib import Path
 import pymupdf
 import requests
 import json
+import csv
 
 
 MODEL = "qwen3-vl:2b-instruct"
@@ -150,6 +151,7 @@ def main():
         pages = range(1, page_count + 1)
 
     results = []
+    rows = []
     started = time.perf_counter()
 
     for page_number in pages:
@@ -166,6 +168,15 @@ def main():
         elapsed = time.perf_counter() - page_started
         print(f"  Category: {label} ({elapsed:.1f}s)", flush=True)
 
+        rows.append({
+            "file": args.pdf.name,
+            "model": MODEL,
+            "page": page_number,
+            "predicted_label": label,
+            "seconds": round(elapsed, 2),
+            "expected_label": "",
+        })
+
     if args.page is None:
         print(f"\nDocument category: {summarize_labels(results)}")
     else:
@@ -174,6 +185,31 @@ def main():
     print(f"Pages processed: {len(results)}")
     print(f"Total time: {time.perf_counter() - started:.1f}s")
 
+
+    output_dir = Path("classification_results")
+    output_dir.mkdir(exist_ok=True)
+
+    output_path = output_dir / (
+        f"{args.pdf.stem}_{time.time_ns()}.csv"
+    )
+
+    fieldnames = [
+        "file",
+        "model",
+        "page",
+        "predicted_label",
+        "seconds",
+        "expected_label",
+    ]
+
+    with output_path.open(
+        "w", newline="", encoding="utf-8-sig"
+    ) as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"Results saved to: {output_path.resolve()}")
 
 if __name__ == "__main__":
     main()

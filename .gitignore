@@ -26,3 +26,6 @@ evaluation/results/*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated PDF classification results
+classification_results/
