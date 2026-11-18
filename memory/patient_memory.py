@@ -6,13 +6,55 @@ from datetime import datetime
 from pathlib import Path
 from langchain_core.tools import tool
 from config import PATIENT_MEMORY_DIR
+import re
+
+
+
+_PATIENT_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+
+
+def validate_patient_id(patient_id: str) -> str:
+    """Accept 1–64 letters, digits, underscores, or hyphens."""
+    if (
+        not isinstance(patient_id, str)
+        or not _PATIENT_ID_PATTERN.fullmatch(patient_id)
+    ):
+        raise ValueError(
+            "Patient ID must contain 1–64 letters, digits, "
+            "underscores, or hyphens, and start with a letter or digit."
+        )
+
+    # Windows reserves these names, including when used as directories.
+    reserved_names = {
+        "CON", "PRN", "AUX", "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }
+    if patient_id.upper() in reserved_names:
+        raise ValueError("Patient ID uses a reserved filesystem name.")
+
+    return patient_id
 
 
 def _patient_dir(patient_id: str) -> Path:
-    base = Path(PATIENT_MEMORY_DIR)
-    p = base / patient_id
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    patient_id = validate_patient_id(patient_id)
+
+    base = Path(PATIENT_MEMORY_DIR).resolve()
+    patient_path = (base / patient_id).resolve()
+
+    # Also prevent an existing symlink from escaping the storage directory.
+    if not patient_path.is_relative_to(base):
+        raise ValueError("Patient directory must stay inside patient storage.")
+
+    patient_path.mkdir(parents=True, exist_ok=True)
+    return patient_path
+
+"""
+This preserves existing IDs such as P001 and john_doe, while rejecting paths, 
+empty IDs, and reserved Windows names. 
+It rejects invalid input instead of silently 
+changing an ID and potentially selecting another patient
+"""
 
 
 def _profile_path(patient_id: str) -> Path:
