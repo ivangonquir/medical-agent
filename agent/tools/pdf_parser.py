@@ -1,11 +1,13 @@
 """PDF parsing tool — ingests PDFs and makes them searchable."""
 
+import re
 import os
 import json
 import hashlib
 from pathlib import Path
 from langchain_core.tools import tool
 from config import PDF_UPLOAD_DIR
+from memory.patient_memory import validate_patient_id
 
 
 def _get_pdf_store_path() -> Path:
@@ -122,53 +124,55 @@ def _simple_keyword_search(chunks: list[str], query: str, top_k: int = 5) -> lis
 
 
 @tool
-def search_pdf_content(query: str, pdf_id: str = "", patient_id: str = "") -> str:
-    """Search through uploaded PDF documents for relevant content.
-    PDFs are pre-indexed — do NOT pass a file path. Use pdf_id from the
-    patient context or from list_uploaded_pdfs (leave empty to search all).
+def search_pdf_content(
+    query: str,
+    patient_id: str,
+    pdf_id: str = "",
+) -> str:
+    """Search documents belonging to the specified patient.
 
     Args:
-        query: Keywords or question to search for in the PDF(s)
-        pdf_id: The pdf_id shown in patient context (NOT a filename or path).
-                Leave empty to search all PDFs for this patient.
-        patient_id: Only search PDFs belonging to this patient. Leave empty
-                    to search across all patients.
+        query: Keywords or question to search for.
+        patient_id: Required patient identifier.
+        pdf_id: Optional document identifier, never a filename or path.
     """
+    patient_id = validate_patient_id(patient_id)
+
+    if pdf_id and not re.fullmatch(r"[0-9a-f]{8}", pdf_id):
+        raise ValueError("Invalid PDF ID.")
+
     store = _get_pdf_store_path()
-
-    if pdf_id:
-        index_files = [_index_path(pdf_id)]
-    else:
-        all_files = list(store.glob("*_index.json"))
-        if patient_id:
-            index_files = []
-            for f in all_files:
-                with open(f, encoding="utf-8") as fp:
-                    idx = json.load(fp)
-                if idx.get("patient_id") == patient_id:
-                    index_files.append(f)
-        else:
-            index_files = all_files
-
-    if not index_files:
-        return "No PDFs have been uploaded yet. Use the ingest_pdf function to add a PDF first."
+    index_files = (
+        [_index_path(pdf_id)]
+        if pdf_id
+        else list(store.glob("*_index.json"))
+    )
 
     results = []
-    for index_file in index_files:
-        if not index_file.exists():
-            continue
-        with open(index_file, encoding="utf-8") as f:
-            idx = json.load(f)
 
-        relevant_chunks = _simple_keyword_search(idx["chunks"], query)
-        if relevant_chunks:
+    for index_file in index_files:
+        if not index_file.is_file():
+            continue
+
+        with open(index_file, encoding="utf-8") as file:
+            index = json.load(file)
+
+        # Enforce ownership even when a specific PDF was requested.
+        if index.get("patient_id") != patient_id:
+            continue
+        # key change: it runs regardless of how the document was selected
+
+        chunks = _simple_keyword_search(index["chunks"], query)
+
+        if chunks:
             results.append(
-                f"### From: {idx['filename']} (ID: {idx['pdf_id']})\n"
-                + "\n---\n".join(relevant_chunks[:3])
+                f"### From: {index['filename']} "
+                f"(ID: {index['pdf_id']})\n"
+                + "\n---\n".join(chunks[:3])
             )
 
     if not results:
-        return f"No relevant content found for '{query}' in uploaded PDFs."
+        return "No matching content found in this patient's documents."
 
     return "## PDF Search Results\n\n" + "\n\n".join(results)
 
